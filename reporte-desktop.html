@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reporte de Historial</title>
+    <!-- Incluye Tailwind CSS para un estilo moderno y responsivo -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Estilo personalizado para usar la fuente Inter */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6; /* Gris claro de fondo */
+        }
+        .container {
+            max-width: 1200px; /* Ancho ampliado para la tabla de datos */
+        }
+        .table-container {
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        /* Oculta la página en pantallas pequeñas */
+        @media (max-width: 767px) {
+            body {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body class="p-4 flex justify-center items-center min-h-screen">
+
+    <div class="container bg-white p-6 rounded-3xl shadow-xl w-full">
+        <h1 class="text-2xl font-bold text-center text-gray-800">Historial de Checklists</h1>
+        <p class="text-sm text-gray-500 text-center">Datos sincronizados en tiempo real desde Firestore.</p>
+        <p id="userIdDisplay" class="text-xs text-gray-500 text-center"></p>
+
+        <div class="table-container bg-gray-50 p-2 rounded-xl shadow-inner mt-6">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-200">
+                    <tr>
+                        <th class="px-3 py-2 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Fecha</th>
+                        <th class="px-3 py-2 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Asociado</th>
+                        <th class="px-3 py-2 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Área</th>
+                        <th class="px-3 py-2 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Evaluador</th>
+                        <th class="px-3 py-2 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Estado</th>
+                    </tr>
+                </thead>
+                <tbody id="dataTableBody" class="bg-white divide-y divide-gray-200">
+                    <!-- Los datos se insertarán aquí dinámicamente -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script type="module">
+        // Importa los módulos de Firebase
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, onSnapshot, query } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Variables globales para Firebase
+        const firebaseConfig = JSON.parse(__firebase_config);
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        // Inicializa Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+        let userId = null;
+
+        // Autenticación anónima
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                userId = user.uid;
+                document.getElementById('userIdDisplay').textContent = `Tu ID de usuario: ${userId}`;
+                // Llama a la función que escucha los datos después de la autenticación
+                listenForDataChanges();
+            } else {
+                if (initialAuthToken) {
+                    await signInWithCustomToken(auth, initialAuthToken);
+                } else {
+                    await signInAnonymously(auth);
+                }
+            }
+        });
+        
+        // Función para escuchar los cambios en Firestore y renderizar la tabla
+        function listenForDataChanges() {
+             if (!userId) return; // Espera a que el usuario esté autenticado
+             
+             const dataTableBody = document.getElementById('dataTableBody');
+
+             // Se consulta la colección pública de surveys
+             const q = collection(db, `/artifacts/${appId}/public/data/surveys`);
+
+             onSnapshot(q, (querySnapshot) => {
+                 dataTableBody.innerHTML = ''; // Limpia la tabla
+                 querySnapshot.forEach((doc) => {
+                     const data = doc.data();
+                     
+                     // Determina si el asociado cumplió todos los objetivos
+                     let allObjectivesCompleted = true;
+                     for (const key in data.objetivos) {
+                         if (data.objetivos[key].cumplido === false) {
+                             allObjectivesCompleted = false;
+                             break;
+                         }
+                     }
+
+                     const row = document.createElement('tr');
+                     row.classList.add('hover:bg-gray-50');
+
+                     const formattedDate = new Date(data.fecha).toLocaleString();
+                     const estadoText = allObjectivesCompleted ? 'Cumplió' : 'No cumplió';
+                     const estadoColor = allObjectivesCompleted ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800';
+
+                     row.innerHTML = `
+                        <td class="px-3 py-2 whitespace-nowrap text-sm font-medium text-gray-900">${formattedDate}</td>
+                        <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-500">${data.asociado}</td>
+                        <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-500">${data.area}</td>
+                        <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-500">${data.evaluador}</td>
+                        <td class="px-3 py-2 whitespace-nowrap">
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${estadoColor}">${estadoText}</span>
+                        </td>
+                     `;
+                     dataTableBody.appendChild(row);
+                 });
+             });
+        }
+    </script>
+</body>
+</html>

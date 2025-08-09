@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Checklist de Cumplimiento Móvil</title>
+    <!-- Incluye Tailwind CSS para un estilo moderno y responsivo -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Estilo personalizado para usar la fuente Inter */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6; /* Gris claro de fondo */
+        }
+        .container {
+            max-width: 500px;
+        }
+        /* Estilo para el área de firma */
+        #firmaCanvas {
+            border: 2px solid #e5e7eb;
+            background-color: #ffffff;
+            touch-action: none; /* Previene el scroll con el dedo en el canvas */
+        }
+        /* Estilo para el cuadro de mensaje de la aplicación */
+        .message-box {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 100;
+            background-color: white;
+            padding: 2rem;
+            border-radius: 1rem;
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+            text-align: center;
+            max-width: 90%;
+            display: none;
+        }
+        /* Estilo para las estrellas de calificación */
+        .rating-stars svg {
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+        .rating-stars svg.filled {
+            color: #fbbf24; /* Color amarillo */
+        }
+        .rating-stars svg.empty {
+            color: #d1d5db; /* Color gris */
+        }
+    </style>
+</head>
+<body class="p-4 flex justify-center items-center min-h-screen">
+
+    <div class="container bg-white p-6 rounded-3xl shadow-xl w-full">
+
+        <!-- Cuadro de mensaje personalizado -->
+        <div id="messageBox" class="message-box">
+            <p id="messageText" class="text-lg font-semibold text-gray-800"></p>
+            <button id="closeMessageBtn" class="mt-4 px-4 py-2 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 transition-colors duration-200">OK</button>
+        </div>
+
+        <!-- ********************** PANTALLA DE INICIO ********************** -->
+        <div id="startScreen" class="space-y-6">
+            <h1 class="text-2xl font-bold text-center text-gray-800">Seleccione el Área</h1>
+            <p id="userIdDisplay" class="text-xs text-gray-500 text-center"></p>
+
+            <div class="space-y-2">
+                <label for="areaSelect" class="block text-sm font-medium text-gray-700">Área de trabajo:</label>
+                <select id="areaSelect" class="w-full p-2 border-2 border-gray-300 rounded-xl focus:border-blue-500 focus:ring-blue-500 transition-colors duration-200">
+                    <option value="" disabled selected>-- Elige un área --</option>
+                    <option value="EMBARQUES">EMBARQUES</option>
+                    <option value="PBL / PBL PICKS">PBL / PBL PICKS</option>
+                    <option value="SORTER">SORTER</option>
+                    <option value="SORTER / OVER">SORTER / OVER</option>
+                    <option value="RECIBO">RECIBO</option>
+                </select>
+            </div>
+            
+            <button id="nextBtn" class="w-full px-4 py-2 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                Iniciar Checklist
+            </button>
+        </div>
+
+        <!-- ********************** PANTALLA DEL CHECKLIST (Inicialmente oculta) ********************** -->
+        <div id="checklistScreen" class="space-y-6" style="display: none;">
+            <!-- Botón para regresar a la pantalla de inicio -->
+            <button id="backBtn" class="px-4 py-2 bg-gray-300 text-gray-800 font-semibold rounded-xl hover:bg-gray-400 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2">
+                Volver
+            </button>
+            <h1 id="checklistTitle" class="text-2xl font-bold text-center text-gray-800 uppercase"></h1>
+
+            <!-- Sección para seleccionar el turno -->
+            <div class="space-y-2">
+                <label for="turnoSelect" class="block text-sm font-medium text-gray-700">Seleccione el turno:</label>
+                <select id="turnoSelect" class="w-full p-2 border-2 border-gray-300 rounded-xl focus:border-blue-500 focus:ring-blue-500 transition-colors duration-200">
+                    <option value="" disabled selected>-- Elige un turno --</option>
+                    <option value="Mañana">Mañana</option>
+                    <option value="Tarde">Tarde</option>
+                    <option value="Noche">Noche</option>
+                </select>
+            </div>
+            
+            <!-- Sección para seleccionar y gestionar asociados -->
+            <div class="space-y-2">
+                <label for="asociadoSelect" class="block text-sm font-medium text-gray-700">Seleccione el asociado:</label>
+                <select id="asociadoSelect" class="w-full p-2 border-2 border-gray-300 rounded-xl focus:border-blue-500 focus:ring-blue-500 transition-colors duration-200">
+                    <option value="" disabled selected>-- Elige un asociado --</option>
+                </select>
+                <div class="flex space-x-2">
+                    <input type="text" id="nuevoAsociadoInput" placeholder="Nombre de nuevo asociado" class="w-full p-2 border-2 border-gray-300 rounded-xl focus:border-blue-500 focus:ring-blue-500">
+                    <button id="agregarAsociadoBtn" class="bg-green-500 text-white px-4 py-2 rounded-xl hover:bg-green-600 transition-colors duration-200">Agregar</button>
+                </div>
+                <button id="eliminarAsociadoBtn" class="w-full px-4 py-2 bg-red-500 text-white font-semibold rounded-xl hover:bg-red-600 transition-colors duration-200 mt-2" style="display:none;">Eliminar Asociado</button>
+            </div>
+
+            <!-- Contenedor para los objetivos dinámicos -->
+            <div id="objetivosContainer" class="space-y-4">
+                <p class="text-sm text-gray-500">
+                    Marque que no se cumplió o que sí se cumplió.
+                </p>
+            </div>
+            
+            <!-- Sección para la calificación de estrellas -->
+            <div class="space-y-2 mt-4">
+                <label class="block text-sm font-medium text-gray-700">Servicio del Turno:</label>
+                <div id="ratingStars" class="flex justify-center space-x-1 rating-stars">
+                    <!-- Las estrellas SVG se renderizarán aquí con JavaScript -->
+                </div>
+            </div>
+
+            <!-- Sección para el nombre del evaluador y firma -->
+            <div class="space-y-4 mt-4">
+                <div class="space-y-2">
+                    <label for="evaluadorInput" class="block text-sm font-medium text-gray-700">Nombre de quién evalúa:</label>
+                    <input type="text" id="evaluadorInput" placeholder="Nombre completo" class="w-full p-2 border-2 border-gray-300 rounded-xl focus:border-blue-500 focus:ring-blue-500 transition-colors duration-200">
+                </div>
+                
+                <div class="space-y-2">
+                    <label class="block text-sm font-medium text-gray-700">Firma:</label>
+                    <canvas id="firmaCanvas" class="w-full h-40 rounded-xl border-dashed"></canvas>
+                    <button id="limpiarFirmaBtn" class="w-full px-4 py-2 bg-gray-300 text-gray-800 font-semibold rounded-xl hover:bg-gray-400 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2">
+                        Limpiar Firma
+                    </button>
+                </div>
+            </div>
+
+            <!-- Botones de acción -->
+            <div class="flex space-x-4">
+                <button id="clearFormBtn" class="w-1/2 px-4 py-2 bg-yellow-500 text-white font-semibold rounded-xl hover:bg-yellow-600 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2">
+                    Limpiar Formulario
+                </button>
+                <button id="submitBtn" class="w-1/2 px-4 py-2 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                    Confirmar y Guardar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        // Importa los módulos de Firebase
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Variables globales para Firebase
+        const firebaseConfig = JSON.parse(__firebase_config);
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        // Inicializa Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+        let userId = null;
+
+        // Autenticación anónima
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                userId = user.uid;
+                document.getElementById('userIdDisplay').textContent = `Tu ID de usuario: ${userId}`;
+            } else {
+                if (initialAuthToken) {
+                    await signInWithCustomToken(auth, initialAuthToken);
+                } else {
+                    await signInAnonymously(auth);
+                }
+            }
+        });
+        
+        // Función para mostrar un mensaje personalizado
+        function showMessage(text) {
+            const messageBox = document.getElementById('messageBox');
+            const messageText = document.getElementById('messageText');
+            messageText.textContent = text;
+            messageBox.style.display = 'block';
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // ** Elementos de la interfaz de usuario **
+            const startScreen = document.getElementById('startScreen');
+            const areaSelect = document.getElementById('areaSelect');
+            const nextBtn = document.getElementById('nextBtn');
+            const checklistScreen = document.getElementById('checklistScreen');
+            const checklistTitle = document.getElementById('checklistTitle');
+            const backBtn = document.getElementById('backBtn');
+            const clearFormBtn = document.getElementById('clearFormBtn');
+            const closeMessageBtn = document.getElementById('closeMessageBtn');
+            const messageBox = document.getElementById('messageBox');
+
+            const asociadoSelect = document.getElementById('asociadoSelect');
+            const nuevoAsociadoInput = document.getElementById('nuevoAsociadoInput');
+            const agregarAsociadoBtn = document.getElementById('agregarAsociadoBtn');
+            const eliminarAsociadoBtn = document.getElementById('eliminarAsociadoBtn');
+            const turnoSelect = document.getElementById('turnoSelect');
+            const evaluadorInput = document.getElementById('evaluadorInput');
+            const submitBtn = document.getElementById('submitBtn');
+            const objetivosContainer = document.getElementById('objetivosContainer');
+            
+            const firmaCanvas = document.getElementById('firmaCanvas');
+            const limpiarFirmaBtn = document.getElementById('limpiarFirmaBtn');
+            const ctx = firmaCanvas.getContext('2d');
+            let drawing = false;
+            let asociados = [];
+            let selectedArea = ''; // Variable para almacenar el área seleccionada
+            let selectedRating = 0; // Para almacenar la calificación con estrellas
+
+            // Objeto con los checklists para cada área
+            const checklists = {
+                "EMBARQUES": [
+                    { tarea: "Etiquetas no facturadas (LNI)", plazo: "48 horas" },
+                    { tarea: "Huevo", plazo: "48 horas" },
+                    { tarea: "Farmacia SSTK / Alto Valor", plazo: "72 horas" },
+                    { tarea: "Mermas", plazo: "12 horas" },
+                    { tarea: "Reingreso", plazo: "Limpieza de área; mínimo 1 tarima por turno, en caso de Pallets 3" }
+                ],
+                "PBL / PBL PICKS": [
+                    { tarea: "Etiquetas PBL sin procesar", plazo: "36 horas" },
+                    { tarea: "Etiquetas PBL sin finalizar", plazo: "24 horas" },
+                    { tarea: "Mermas", plazo: "12 horas" },
+                    { tarea: "Etiquetas DCL sin pasar al embarque (LNI)", plazo: "24 horas" },
+                    { tarea: "Etiquetas abiertas en grid", plazo: "24 horas" },
+                    { tarea: "2 Tarimas auditadas", plazo: "8 horas" },
+                    { tarea: "REINGRESO", plazo: "Limpieza de area" }
+                ],
+                "SORTER": [
+                    { tarea: "Etiquetas DCL sin pasar al embarque (LNI)", plazo: "36 Horas" },
+                    { tarea: "2 Tarimas auditadas", plazo: "8 horas" },
+                    { tarea: "Etiquetas CTN sin procesar", plazo: "36 Horas" }
+                ],
+                "SORTER / OVER": [
+                    { tarea: "Mercancía identificada", plazo: "24 horas" },
+                    { tarea: "RPT's", plazo: "24 horas" },
+                    { tarea: "REINGRESO", plazo: "Limpieza de area; mínimo 1 tarima por turno, en caso de Pallets 3" }
+                ],
+                "RECIBO": [
+                    { tarea: "PLT pendientes por pasar al embarque", plazo: "24 Horas" },
+                    { tarea: "CRC Pendientes", plazo: "24 Horas" },
+                    { tarea: "RPT", plazo: "24 Horas" },
+                    { tarea: "Mermas", plazo: "12 horas" },
+                    { tarea: "REINGRESO", plazo: "Limpieza de area; mínimo 1 tarima por turno, en caso de Pallets 3" }
+                ]
+            };
+            
+            // Lógica para los botones de navegación entre pantallas
+            nextBtn.addEventListener('click', () => {
+                if (!areaSelect.value) {
+                    showMessage('Por favor, selecciona un área para continuar.');
+                    return;
+                }
+                selectedArea = areaSelect.value;
+                
+                startScreen.style.display = 'none';
+                checklistScreen.style.display = 'block';
+                checklistTitle.textContent = `CHECKLIST: ${selectedArea}`;
+                renderChecklist(selectedArea);
+            });
+
+            // Lógica para el botón "Volver" del checklist
+            backBtn.addEventListener('click', () => {
+                checklistScreen.style.display = 'none';
+                startScreen.style.display = 'block';
+                areaSelect.value = ''; // Limpia la selección del área
+                resetForm(); // Limpia el formulario
+            });
+            
+            // Función para renderizar el checklist dinámicamente
+            function renderChecklist(area) {
+                objetivosContainer.innerHTML = '';
+                const titleParagraph = document.createElement('p');
+                titleParagraph.classList.add('text-sm', 'text-gray-500');
+                titleParagraph.textContent = 'Marque que no se cumplió o que sí se cumplió.';
+                objetivosContainer.appendChild(titleParagraph);
+
+                const items = checklists[area];
+                if (items) {
+                    items.forEach((item, index) => {
+                        const div = document.createElement('div');
+                        div.classList.add('flex', 'flex-col', 'space-y-2', 'bg-gray-100', 'p-4', 'rounded-xl', 'shadow-sm');
+                        div.dataset.objetivo = item.tarea; // Guardamos el nombre del objetivo en el dataset
+                        
+                        const flexRow = document.createElement('div');
+                        flexRow.classList.add('flex', 'items-center', 'space-x-3', 'mb-2');
+                        
+                        // Sección de la tarea y el plazo
+                        const tareaDiv = document.createElement('div');
+                        tareaDiv.classList.add('flex-grow');
+                        const labelText = document.createElement('label');
+                        labelText.classList.add('block', 'text-sm', 'font-bold', 'text-gray-900');
+                        labelText.textContent = item.tarea;
+                        const plazoText = document.createElement('p');
+                        plazoText.classList.add('text-xs', 'text-gray-500');
+                        plazoText.textContent = item.plazo;
+                        tareaDiv.appendChild(labelText);
+                        tareaDiv.appendChild(plazoText);
+                        flexRow.appendChild(tareaDiv);
+                        
+                        // Contenedor para los radio buttons
+                        const radioGroup = document.createElement('div');
+                        radioGroup.classList.add('flex', 'space-x-4');
+                        flexRow.appendChild(radioGroup);
+
+                        // Radio button "No"
+                        const radioNo = document.createElement('input');
+                        radioNo.type = 'radio';
+                        radioNo.name = `objetivo${index}`;
+                        radioNo.id = `objetivo${index}No`;
+                        radioNo.value = 'no';
+                        radioNo.classList.add('h-5', 'w-5', 'rounded', 'text-red-600', 'focus:ring-red-500');
+                        
+                        const labelNo = document.createElement('label');
+                        labelNo.htmlFor = `objetivo${index}No`;
+                        labelNo.classList.add('text-sm', 'font-medium', 'text-gray-900', 'mr-2');
+                        labelNo.textContent = 'No';
+                        
+                        // Radio button "Sí"
+                        const radioSi = document.createElement('input');
+                        radioSi.type = 'radio';
+                        radioSi.name = `objetivo${index}`;
+                        radioSi.id = `objetivo${index}Si`;
+                        radioSi.value = 'si';
+                        radioSi.classList.add('h-5', 'w-5', 'rounded', 'text-green-600', 'focus:ring-green-500');
+
+                        const labelSi = document.createElement('label');
+                        labelSi.htmlFor = `objetivo${index}Si`;
+                        labelSi.classList.add('text-sm', 'font-medium', 'text-gray-900');
+                        labelSi.textContent = 'Sí';
+
+                        radioGroup.appendChild(radioNo);
+                        radioGroup.appendChild(labelNo);
+                        radioGroup.appendChild(radioSi);
+                        radioGroup.appendChild(labelSi);
+
+                        div.appendChild(flexRow);
+                        objetivosContainer.appendChild(div);
+
+                        // Event listener para los cambios en los radio buttons
+                        radioGroup.addEventListener('change', (event) => {
+                            const parentDiv = event.target.closest('div[data-objetivo]');
+                            const cantidadInputId = `cantidad-${index}`;
+                            
+                            // Si se selecciona "No"
+                            if (event.target.value === 'no') {
+                                // Cambia el color del fondo a rojo
+                                parentDiv.classList.add('bg-red-100');
+                                parentDiv.classList.remove('bg-green-100');
+
+                                // Crea y muestra el campo de cantidad si no existe
+                                let cantidadInput = document.getElementById(cantidadInputId);
+                                if (!cantidadInput) {
+                                    cantidadInput = document.createElement('input');
+                                    cantidadInput.type = 'number';
+                                    cantidadInput.id = cantidadInputId;
+                                    cantidadInput.placeholder = 'Cantidad que no se cumplió';
+                                    cantidadInput.classList.add('w-full', 'p-2', 'mt-2', 'border-2', 'border-gray-300', 'rounded-xl', 'focus:border-red-500', 'focus:ring-red-500');
+                                    parentDiv.appendChild(cantidadInput);
+                                }
+                            } else if (event.target.value === 'si') {
+                                // Cambia el color del fondo a verde
+                                parentDiv.classList.add('bg-green-100');
+                                parentDiv.classList.remove('bg-red-100');
+
+                                // Elimina el campo de cantidad si existe
+                                const cantidadInput = document.getElementById(cantidadInputId);
+                                if (cantidadInput) {
+                                    parentDiv.removeChild(cantidadInput);
+                                }
+                            }
+                        });
+                    });
+                } else {
+                    // Mensaje si no hay checklist definido para el área
+                    const noChecklistDiv = document.createElement('div');
+                    noChecklistDiv.classList.add('p-4', 'bg-yellow-100', 'text-yellow-700', 'rounded-xl', 'text-center');
+                    noChecklistDiv.textContent = `El checklist para el área de ${area} aún no está disponible.`;
+                    objetivosContainer.appendChild(noChecklistDiv);
+                    // Oculta el botón de enviar si no hay checklist
+                    submitBtn.style.display = 'none';
+                }
+            }
+            
+            // Lógica para la calificación de estrellas
+            const ratingStarsContainer = document.getElementById('ratingStars');
+            function renderStars() {
+                ratingStarsContainer.innerHTML = '';
+                for (let i = 1; i <= 5; i++) {
+                    const star = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+                    star.setAttribute('fill', 'currentColor');
+                    star.setAttribute('viewBox', '0 0 20 20');
+                    star.classList.add('w-10', 'h-10');
+                    if (i <= selectedRating) {
+                        star.classList.add('filled');
+                    } else {
+                        star.classList.add('empty');
+                    }
+                    star.innerHTML = '<path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.286 3.945a1 1 0 00.95.691h4.168c.969 0 1.371 1.24.588 1.81l-3.376 2.45a1 1 0 00-.363 1.118l1.286 3.945c.3.921-.755 1.688-1.54 1.118l-3.377-2.45a1 1 0 00-1.176 0l-3.377 2.45c-.784.57-1.84-.197-1.54-1.118l1.286-3.945a1 1 0 00-.363-1.118L2.062 9.373c-.783-.57-.381-1.81.588-1.81h4.168a1 1 0 00.95-.691l1.286-3.945z" />';
+                    star.addEventListener('click', () => {
+                        selectedRating = i;
+                        renderStars();
+                    });
+                    ratingStarsContainer.appendChild(star);
+                }
+            }
+            renderStars(); // Renderiza las estrellas al cargar la pantalla
+
+            // Funciones para gestionar los asociados
+            function cargarAsociados() {
+                const asociadosGuardados = localStorage.getItem('asociados');
+                if (asociadosGuardados) {
+                    asociados = JSON.parse(asociadosGuardados);
+                } else {
+                    // Lista actualizada y ordenada alfabéticamente
+                    asociados = [
+                        "AARON HERNANDEZ HERNANDEZ", "ABEL NOE QUIROGA HERNANDEZ", "ALEJANDRO DE JESUS JUAN",
+                        "ALMA YESICA HERNANDEZ BALTAZAR", "ANA KAREN MENDEZ ROQUE", "ANA MARIA QUIROZ OCAÑ´A",
+                        "BRENDA LETICIA MUA'OZ CHAVEZ", "BRENDA LOZANO RIVERA", "CAROLINA VILLEGAS CEDILLO",
+                        "CATALINA CUANDON HERRERA", "ELVIRA VALDEZ DOMINGUEZ", "GABRIELA FRAGOSO RUIZ",
+                        "GERARDO SIERRA REYES", "GLORIA GARCIA BAUTISTA", "GRISELDA VARELA GRANJENO",
+                        "GUADALUPE ARREDONDO HINOJOSA", "IGNACIO MANUEL REGULES AGUIRRE", "IVAN TEODORO MEDINA",
+                        "J. ENCARNACION MORA GASPAR", "JESSICA MIRIAM ROJAS GARCIA", "JOSE BRAYAN SANCHEZ CLAUDIO",
+                        "JUAN CUAUHTEMOC LOPEZ NAVARRO", "JUAN RODRIGUEZ HERNANDEZ", "LAURA LETICIA CORTES JIMENEZ",
+                        "LIZBETH HERNANDEZ CRISTOBAL", "MARIA ISABEL GARCIA GARCIA", "MARIA LEONOR ALCARAZ SANCHEZ",
+                        "MARISA SOLARES ROSAS", "MARCO ANTONIO GALINDO SALTO", "NOIRA ZOILA RIVERA ZAVALA",
+                        "PATRICIA GREGORIO PEREZ", "PATRICIA ROCHA ELIZALDE", "PEDRO MARIO LOZANO LOPEZ",
+                        "ROSALBA SUAREZ BARRON", "TERESA GOMEZ RIOS"
+                    ].sort();
+                }
+                renderizarAsociados();
+            }
+
+            function guardarAsociados() {
+                localStorage.setItem('asociados', JSON.stringify(asociados));
+            }
+
+            function renderizarAsociados() {
+                asociadoSelect.innerHTML = '<option value="" disabled selected>-- Elige un asociado --</option>';
+                asociados.forEach(asociado => {
+                    const option = document.createElement('option');
+                    option.value = asociado;
+                    option.textContent = asociado;
+                    asociadoSelect.appendChild(option);
+                });
+            }
+            
+            function agregarAsociado() {
+                const nuevoAsociado = nuevoAsociadoInput.value.trim().toUpperCase();
+                if (nuevoAsociado && !asociados.includes(nuevoAsociado)) {
+                    asociados.push(nuevoAsociado);
+                    asociados.sort(); // Ordenar alfabéticamente después de agregar
+                    guardarAsociados();
+                    renderizarAsociados();
+                    nuevoAsociadoInput.value = '';
+                } else if (nuevoAsociado && asociados.includes(nuevoAsociado)) {
+                    showMessage('Este asociado ya existe.');
+                }
+            }
+
+            function eliminarAsociado() {
+                const asociadoSeleccionado = asociadoSelect.value;
+                if (asociadoSeleccionado) {
+                    asociados = asociados.filter(asociado => asociado !== asociadoSeleccionado);
+                    guardarAsociados();
+                    renderizarAsociados();
+                    eliminarAsociadoBtn.style.display = 'none';
+                }
+            }
+
+            // Eventos de los botones de asociados
+            agregarAsociadoBtn.addEventListener('click', agregarAsociado);
+            eliminarAsociadoBtn.addEventListener('click', eliminarAsociado);
+            asociadoSelect.addEventListener('change', () => {
+                eliminarAsociadoBtn.style.display = asociadoSelect.value ? 'block' : 'none';
+            });
+            
+            // Cargar los asociados al iniciar la página
+            cargarAsociados();
+
+            // Ajustar el tamaño del canvas para la firma
+            function resizeCanvas() {
+                const rect = firmaCanvas.getBoundingClientRect();
+                firmaCanvas.width = rect.width;
+                firmaCanvas.height = rect.height;
+                ctx.lineWidth = 3;
+                ctx.lineCap = 'round';
+                ctx.strokeStyle = '#000000';
+            }
+            window.addEventListener('resize', resizeCanvas);
+            resizeCanvas();
+
+            // Lógica para la firma con mouse y touch
+            function startPosition(e) {
+                drawing = true;
+                draw(e);
+            }
+            function endPosition() {
+                drawing = false;
+                ctx.beginPath();
+            }
+            function draw(e) {
+                if (!drawing) return;
+                
+                const rect = firmaCanvas.getBoundingClientRect();
+                let x, y;
+
+                if (e.touches) { // Manejo de eventos táctiles
+                    e.preventDefault(); // Previene el scroll de la página al dibujar
+                    x = e.touches[0].clientX - rect.left;
+                    y = e.touches[0].clientY - rect.top;
+                } else { // Manejo de eventos de mouse
+                    x = e.clientX - rect.left;
+                    y = e.clientY - rect.top;
+                }
+
+                ctx.lineTo(x, y);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(x, y);
+            }
+
+            firmaCanvas.addEventListener('mousedown', startPosition);
+            firmaCanvas.addEventListener('mouseup', endPosition);
+            firmaCanvas.addEventListener('mousemove', draw);
+
+            firmaCanvas.addEventListener('touchstart', startPosition);
+            firmaCanvas.addEventListener('touchend', endPosition);
+            firmaCanvas.addEventListener('touchmove', draw);
+
+            limpiarFirmaBtn.addEventListener('click', () => {
+                ctx.clearRect(0, 0, firmaCanvas.width, firmaCanvas.height);
+            });
+
+            // Función para limpiar todos los campos del formulario
+            function resetForm() {
+                turnoSelect.value = '';
+                asociadoSelect.value = '';
+                evaluadorInput.value = '';
+                selectedRating = 0;
+                renderStars();
+                eliminarAsociadoBtn.style.display = 'none';
+                limpiarFirmaBtn.click(); // Limpia el canvas
+                const radioButtons = document.querySelectorAll('input[type="radio"]');
+                radioButtons.forEach(radio => radio.checked = false);
+                const cantidadInputs = document.querySelectorAll('input[type="number"]');
+                cantidadInputs.forEach(input => input.remove());
+                const divs = document.querySelectorAll('#objetivosContainer > div');
+                divs.forEach(div => div.classList.remove('bg-red-100', 'bg-green-100'));
+                renderChecklist(selectedArea); // Volver a renderizar el checklist para limpiar los estilos
+            }
+
+            // Evento para el nuevo botón "Limpiar Formulario"
+            clearFormBtn.addEventListener('click', resetForm);
+
+            // Cierra el cuadro de mensaje
+            closeMessageBtn.addEventListener('click', () => {
+                messageBox.style.display = 'none';
+            });
+            
+            // Agrega un listener al botón de confirmar
+            submitBtn.addEventListener('click', async () => {
+                const turno = turnoSelect.value;
+                const asociado = asociadoSelect.value;
+                const evaluador = evaluadorInput.value;
+                const objetivosCumplidos = {};
+
+                // Validaciones
+                if (!turno) {
+                    showMessage('Por favor, selecciona un turno.');
+                    return;
+                }
+                if (!asociado) {
+                    showMessage('Por favor, selecciona un asociado.');
+                    return;
+                }
+                if (!evaluador.trim()) {
+                    showMessage('Por favor, ingresa el nombre de quién evalúa.');
+                    return;
+                }
+
+                const objetivoDivs = document.querySelectorAll('#objetivosContainer > div');
+                let allObjectivesCompleted = true;
+                objetivoDivs.forEach((div, index) => {
+                    const checkedRadio = div.querySelector('input[type="radio"]:checked');
+                    if (!checkedRadio) {
+                        allObjectivesCompleted = false;
+                    } else {
+                        const objetivoNombre = div.dataset.objetivo;
+                        let cantidad = null;
+                        if (checkedRadio.value === 'no') {
+                            const cantidadInput = div.querySelector('input[type="number"]');
+                            if (cantidadInput) {
+                                cantidad = cantidadInput.value;
+                            }
+                        }
+                        objetivosCumplidos[objetivoNombre] = {
+                            cumplido: checkedRadio.value === 'si',
+                            cantidad: cantidad
+                        };
+                    }
+                });
+
+                if (!allObjectivesCompleted) {
+                     showMessage('Por favor, marca si se cumplió o no cada objetivo.');
+                     return;
+                }
+
+                if (selectedRating === 0) {
+                    showMessage('Por favor, califica el servicio del turno.');
+                    return;
+                }
+
+                const canvasData = firmaCanvas.toDataURL();
+                const blankCanvasData = firmaCanvas.toDataURL('image/png').replace(/^data:image\/[^;]+/, 'data:image/png');
+                if (canvasData === blankCanvasData) {
+                    showMessage('Por favor, realiza la firma.');
+                    return;
+                }
+
+                // ** Lógica para guardar en Firestore **
+                // Se guarda en una colección pública para que todos los usuarios puedan ver el historial
+                const data = {
+                    fecha: new Date().toISOString(),
+                    turno,
+                    area: selectedArea,
+                    asociado,
+                    calificacion_servicio: selectedRating,
+                    evaluador,
+                    objetivos: objetivosCumplidos,
+                    firma: canvasData,
+                    userId: userId,
+                };
+
+                try {
+                    const docRef = await addDoc(collection(db, `/artifacts/${appId}/public/data/surveys`), data);
+                    console.log("Documento escrito con ID: ", docRef.id);
+                    showMessage('¡Encuesta guardada con éxito!');
+                    // Regresa a la pantalla de inicio y limpia el formulario
+                    setTimeout(() => {
+                        checklistScreen.style.display = 'none';
+                        startScreen.style.display = 'block';
+                        areaSelect.value = '';
+                        resetForm();
+                        messageBox.style.display = 'none';
+                    }, 2000);
+                } catch (e) {
+                    console.error("Error al añadir documento: ", e);
+                    showMessage("Ocurrió un error al guardar la encuesta.");
+                }
+            });
+        });
+    </script>
+</body>
+</html>
