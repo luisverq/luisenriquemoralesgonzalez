@@ -167,33 +167,17 @@
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
-        // Inicializa Firebase
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-        const auth = getAuth(app);
-        let userId = null;
-
-        // Autenticación anónima
-        onAuthStateChanged(auth, async (user) => {
-            if (user) {
-                userId = user.uid;
-                document.getElementById('userIdDisplay').textContent = `Tu ID de usuario: ${userId}`;
-            } else {
-                if (initialAuthToken) {
-                    await signInWithCustomToken(auth, initialAuthToken);
-                } else {
-                    await signInAnonymously(auth);
-                }
-            }
-        });
-        
-        // Función para mostrar un mensaje personalizado
-        function showMessage(text) {
-            const messageBox = document.getElementById('messageBox');
-            const messageText = document.getElementById('messageText');
-            messageText.textContent = text;
-            messageBox.style.display = 'block';
+        // Inicializa Firebase solo si la configuración está disponible
+        let app, db, auth;
+        if (Object.keys(firebaseConfig).length > 0) {
+            app = initializeApp(firebaseConfig);
+            db = getFirestore(app);
+            auth = getAuth(app);
+        } else {
+            console.error('Firebase config no está disponible. Las funcionalidades de base de datos no estarán activas.');
         }
+
+        let userId = null;
 
         document.addEventListener('DOMContentLoaded', () => {
             // ** Elementos de la interfaz de usuario **
@@ -206,7 +190,7 @@
             const clearFormBtn = document.getElementById('clearFormBtn');
             const closeMessageBtn = document.getElementById('closeMessageBtn');
             const messageBox = document.getElementById('messageBox');
-
+            
             const asociadoSelect = document.getElementById('asociadoSelect');
             const nuevoAsociadoInput = document.getElementById('nuevoAsociadoInput');
             const agregarAsociadoBtn = document.getElementById('agregarAsociadoBtn');
@@ -218,7 +202,10 @@
             
             const firmaCanvas = document.getElementById('firmaCanvas');
             const limpiarFirmaBtn = document.getElementById('limpiarFirmaBtn');
-            const ctx = firmaCanvas.getContext('2d');
+            let ctx = null;
+            if (firmaCanvas) {
+                ctx = firmaCanvas.getContext('2d');
+            }
             let drawing = false;
             let asociados = [];
             let selectedArea = ''; // Variable para almacenar el área seleccionada
@@ -261,6 +248,35 @@
                 ]
             };
             
+            // Lógica para la autenticación y la visualización del ID
+            if (auth) {
+                onAuthStateChanged(auth, async (user) => {
+                    if (user) {
+                        userId = user.uid;
+                        document.getElementById('userIdDisplay').textContent = `Tu ID de usuario: ${userId}`;
+                    } else {
+                        if (initialAuthToken) {
+                            try {
+                                await signInWithCustomToken(auth, initialAuthToken);
+                            } catch (error) {
+                                console.error("Error al iniciar sesión con token personalizado:", error);
+                                await signInAnonymously(auth);
+                            }
+                        } else {
+                            await signInAnonymously(auth);
+                        }
+                    }
+                });
+            }
+
+            // Función para mostrar un mensaje personalizado
+            function showMessage(text) {
+                const messageBox = document.getElementById('messageBox');
+                const messageText = document.getElementById('messageText');
+                messageText.textContent = text;
+                messageBox.style.display = 'block';
+            }
+
             // Lógica para los botones de navegación entre pantallas
             nextBtn.addEventListener('click', () => {
                 const areaValue = areaSelect.value;
@@ -498,27 +514,31 @@
 
             // Ajustar el tamaño del canvas para la firma
             function resizeCanvas() {
-                const rect = firmaCanvas.getBoundingClientRect();
-                firmaCanvas.width = rect.width;
-                firmaCanvas.height = rect.height;
-                ctx.lineWidth = 3;
-                ctx.lineCap = 'round';
-                ctx.strokeStyle = '#000000';
+                if (firmaCanvas) {
+                    const rect = firmaCanvas.getBoundingClientRect();
+                    firmaCanvas.width = rect.width;
+                    firmaCanvas.height = rect.height;
+                    ctx.lineWidth = 3;
+                    ctx.lineCap = 'round';
+                    ctx.strokeStyle = '#000000';
+                }
             }
             window.addEventListener('resize', resizeCanvas);
             resizeCanvas();
 
             // Lógica para la firma con mouse y touch
             function startPosition(e) {
+                if (!ctx) return;
                 drawing = true;
                 draw(e);
             }
             function endPosition() {
+                if (!ctx) return;
                 drawing = false;
                 ctx.beginPath();
             }
             function draw(e) {
-                if (!drawing) return;
+                if (!drawing || !ctx) return;
                 
                 const rect = firmaCanvas.getBoundingClientRect();
                 let x, y;
@@ -538,17 +558,19 @@
                 ctx.moveTo(x, y);
             }
 
-            firmaCanvas.addEventListener('mousedown', startPosition);
-            firmaCanvas.addEventListener('mouseup', endPosition);
-            firmaCanvas.addEventListener('mousemove', draw);
+            if (firmaCanvas) {
+                firmaCanvas.addEventListener('mousedown', startPosition);
+                firmaCanvas.addEventListener('mouseup', endPosition);
+                firmaCanvas.addEventListener('mousemove', draw);
 
-            firmaCanvas.addEventListener('touchstart', startPosition);
-            firmaCanvas.addEventListener('touchend', endPosition);
-            firmaCanvas.addEventListener('touchmove', draw);
+                firmaCanvas.addEventListener('touchstart', startPosition);
+                firmaCanvas.addEventListener('touchend', endPosition);
+                firmaCanvas.addEventListener('touchmove', draw);
 
-            limpiarFirmaBtn.addEventListener('click', () => {
-                ctx.clearRect(0, 0, firmaCanvas.width, firmaCanvas.height);
-            });
+                limpiarFirmaBtn.addEventListener('click', () => {
+                    ctx.clearRect(0, 0, firmaCanvas.width, firmaCanvas.height);
+                });
+            }
 
             // Función para limpiar todos los campos del formulario
             function resetForm() {
@@ -558,7 +580,9 @@
                 selectedRating = 0;
                 renderStars();
                 eliminarAsociadoBtn.style.display = 'none';
-                limpiarFirmaBtn.click(); // Limpia el canvas
+                if(ctx) {
+                    limpiarFirmaBtn.click(); // Limpia el canvas
+                }
                 const radioButtons = document.querySelectorAll('input[type="radio"]');
                 radioButtons.forEach(radio => radio.checked = false);
                 const cantidadInputs = document.querySelectorAll('input[type="number"]');
@@ -578,6 +602,11 @@
             
             // Agrega un listener al botón de confirmar
             submitBtn.addEventListener('click', async () => {
+                if (!db || !auth || !userId) {
+                    showMessage('Error: La base de datos no está disponible. Por favor, revisa la configuración.');
+                    return;
+                }
+                
                 const turno = turnoSelect.value;
                 const asociado = asociadoSelect.value;
                 const evaluador = evaluadorInput.value;
