@@ -163,13 +163,23 @@
         import { getFirestore, collection, addDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // Variables globales para Firebase
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const firebaseConfig = typeof __firebase_config !== 'undefined' && Object.keys(JSON.parse(__firebase_config)).length > 0
+            ? JSON.parse(__firebase_config)
+            : {
+                apiKey: "tu_api_key",
+                authDomain: "tu_proyecto.firebaseapp.com",
+                projectId: "tu-proyecto-id",
+                storageBucket: "tu_proyecto.appspot.com",
+                messagingSenderId: "tu_sender_id",
+                appId: "tu_app_id"
+            };
+            
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
         // Inicializa Firebase solo si la configuración está disponible
         let app, db, auth;
-        if (Object.keys(firebaseConfig).length > 0) {
+        if (Object.keys(firebaseConfig).length > 0 && firebaseConfig.projectId !== "tu-proyecto-id") {
             app = initializeApp(firebaseConfig);
             db = getFirestore(app);
             auth = getAuth(app);
