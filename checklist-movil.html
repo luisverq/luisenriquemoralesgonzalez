@@ -263,16 +263,18 @@
             
             // Lógica para los botones de navegación entre pantallas
             nextBtn.addEventListener('click', () => {
-                if (!areaSelect.value) {
-                    showMessage('Por favor, selecciona un área para continuar.');
-                    return;
-                }
-                selectedArea = areaSelect.value;
+                const areaValue = areaSelect.value;
+                console.log('Valor del área seleccionada:', areaValue); // Mensaje de depuración
                 
-                startScreen.style.display = 'none';
-                checklistScreen.style.display = 'block';
-                checklistTitle.textContent = `CHECKLIST: ${selectedArea}`;
-                renderChecklist(selectedArea);
+                if (areaValue) {
+                    selectedArea = areaValue;
+                    startScreen.style.display = 'none';
+                    checklistScreen.style.display = 'block';
+                    checklistTitle.textContent = `CHECKLIST: ${selectedArea}`;
+                    renderChecklist(selectedArea);
+                } else {
+                    showMessage('Por favor, selecciona un área para continuar.');
+                }
             });
 
             // Lógica para el botón "Volver" del checklist
