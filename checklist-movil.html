@@ -71,7 +71,8 @@
                     <option value="EMBARQUES">EMBARQUES</option>
                     <option value="PBL / PBL PICKS">PBL / PBL PICKS</option>
                     <option value="SORTER">SORTER</option>
-                    <option value="SORTER / OVER">SORTER / OVER</option>
+                    <option value="CTN / SORTER">CTN / SORTER</option>
+                    <option value="OVER">OVER</option>
                     <option value="RECIBO">RECIBO</option>
                 </select>
             </div>
@@ -241,9 +242,9 @@
                 ],
                 "SORTER": [
                     { tarea: "Etiquetas DCL sin pasar al embarque (LNI)", plazo: "36 Horas" },
-                    { tarea: "2 Tarimas auditadas", plazo: "8 Horas" }
-                    { tarea: "RPM (Reimpresiones de Master)", plazo: "8 Horas" }
-                    { tarea: "Seguimiento a tarimas dobles", plazo: "12 Horas" }
+                    { tarea: "2 Tarimas auditadas", plazo: "8 Horas" },
+                    { tarea: "RPM (Reimpresiones de Master)", plazo: "8 Horas" },
+                    { tarea: "Seguimiento a tarimas dobles", plazo: "12 Horas" },
                     { tarea: "Seguimiento DCL", plazo: "12 Horas" }
                 ],
                 "CTN / SORTER": [
@@ -298,7 +299,6 @@
             // Lógica para los botones de navegación entre pantallas
             nextBtn.addEventListener('click', () => {
                 const areaValue = areaSelect.value;
-                console.log('Valor del área seleccionada al hacer clic:', areaValue);
                 
                 if (areaValue) {
                     selectedArea = areaValue;
@@ -460,31 +460,23 @@
 
             // Funciones para gestionar los asociados
             function cargarAsociados() {
-                const asociadosGuardados = localStorage.getItem('asociados');
-                if (asociadosGuardados) {
-                    asociados = JSON.parse(asociadosGuardados);
-                } else {
-                    // Lista actualizada y ordenada alfabéticamente
-                    asociados = [
-                        "AARON HERNANDEZ HERNANDEZ", "ABEL NOE QUIROGA HERNANDEZ", "ALEJANDRO DE JESUS JUAN",
-                        "ALMA YESICA HERNANDEZ BALTAZAR", "ANA KAREN MENDEZ ROQUE", "ANA MARIA QUIROZ OCAÑ´A",
-                        "BRENDA LETICIA MUA'OZ CHAVEZ", "BRENDA LOZANO RIVERA", "CAROLINA VILLEGAS CEDILLO",
-                        "CATALINA CUANDON HERRERA", "ELVIRA VALDEZ DOMINGUEZ", "GABRIELA FRAGOSO RUIZ",
-                        "GERARDO SIERRA REYES", "GLORIA GARCIA BAUTISTA", "GRISELDA VARELA GRANJENO",
-                        "GUADALUPE ARREDONDO HINOJOSA", "IGNACIO MANUEL REGULES AGUIRRE", "IVAN TEODORO MEDINA",
-                        "J. ENCARNACION MORA GASPAR", "JESSICA MIRIAM ROJAS GARCIA", "JOSE BRAYAN SANCHEZ CLAUDIO",
-                        "JUAN CUAUHTEMOC LOPEZ NAVARRO", "JUAN RODRIGUEZ HERNANDEZ", "LAURA LETICIA CORTES JIMENEZ",
-                        "LIZBETH HERNANDEZ CRISTOBAL", "MARIA ISABEL GARCIA GARCIA", "MARIA LEONOR ALCARAZ SANCHEZ",
-                        "MARISA SOLARES ROSAS", "MARCO ANTONIO GALINDO SALTO", "NOIRA ZOILA RIVERA ZAVALA",
-                        "PATRICIA GREGORIO PEREZ", "PATRICIA ROCHA ELIZALDE", "PEDRO MARIO LOZANO LOPEZ",
-                        "ROSALBA SUAREZ BARRON", "TERESA GOMEZ RIOS"
-                    ].sort();
-                }
+                // Se cargan de forma inicial los asociados desde un arreglo para esta vista previa
+                // La versión completa del código usará Firestore para esto
+                asociados = [
+                    "AARON HERNANDEZ HERNANDEZ", "ABEL NOE QUIROGA HERNANDEZ", "ALEJANDRO DE JESUS JUAN",
+                    "ALMA YESICA HERNANDEZ BALTAZAR", "ANA KAREN MENDEZ ROQUE", "ANA MARIA QUIROZ OCAÑ´A",
+                    "BRENDA LETICIA MUA'OZ CHAVEZ", "BRENDA LOZANO RIVERA", "CAROLINA VILLEGAS CEDILLO",
+                    "CATALINA CUANDON HERRERA", "ELVIRA VALDEZ DOMINGUEZ", "GABRIELA FRAGOSO RUIZ",
+                    "GERARDO SIERRA REYES", "GLORIA GARCIA BAUTISTA", "GRISELDA VARELA GRANJENO",
+                    "GUADALUPE ARREDONDO HINOJOSA", "IGNACIO MANUEL REGULES AGUIRRE", "IVAN TEODORO MEDINA",
+                    "J. ENCARNACION MORA GASPAR", "JESSICA MIRIAM ROJAS GARCIA", "JOSE BRAYAN SANCHEZ CLAUDIO",
+                    "JUAN CUAUHTEMOC LOPEZ NAVARRO", "JUAN RODRIGUEZ HERNANDEZ", "LAURA LETICIA CORTES JIMENEZ",
+                    "LIZBETH HERNANDEZ CRISTOBAL", "MARIA ISABEL GARCIA GARCIA", "MARIA LEONOR ALCARAZ SANCHEZ",
+                    "MARISA SOLARES ROSAS", "MARCO ANTONIO GALINDO SALTO", "NOIRA ZOILA RIVERA ZAVALA",
+                    "PATRICIA GREGORIO PEREZ", "PATRICIA ROCHA ELIZALDE", "PEDRO MARIO LOZANO LOPEZ",
+                    "ROSALBA SUAREZ BARRON", "TERESA GOMEZ RIOS"
+                ].sort();
                 renderizarAsociados();
-            }
-
-            function guardarAsociados() {
-                localStorage.setItem('asociados', JSON.stringify(asociados));
             }
 
             function renderizarAsociados() {
@@ -502,7 +494,6 @@
                 if (nuevoAsociado && !asociados.includes(nuevoAsociado)) {
                     asociados.push(nuevoAsociado);
                     asociados.sort(); // Ordenar alfabéticamente después de agregar
-                    guardarAsociados();
                     renderizarAsociados();
                     nuevoAsociadoInput.value = '';
                 } else if (nuevoAsociado && asociados.includes(nuevoAsociado)) {
@@ -514,7 +505,6 @@
                 const asociadoSeleccionado = asociadoSelect.value;
                 if (asociadoSeleccionado) {
                     asociados = asociados.filter(asociado => asociado !== asociadoSeleccionado);
-                    guardarAsociados();
                     renderizarAsociados();
                     eliminarAsociadoBtn.style.display = 'none';
                 }
@@ -620,8 +610,10 @@
             
             // Agrega un listener al botón de confirmar
             submitBtn.addEventListener('click', async () => {
-                if (!db || !auth || !userId) {
-                    showMessage('Error: La base de datos no está disponible. Por favor, revisa la configuración.');
+                // Si la configuración no está disponible, muestra un mensaje de error y no intenta guardar.
+                if (!firebaseConfig || !db || !auth || !userId) {
+                    showMessage('Error: La base de datos no está conectada. Los datos no se guardarán.');
+                    console.error('Error al guardar: La configuración de Firebase no está disponible.');
                     return;
                 }
                 
@@ -718,4 +710,3 @@
     </script>
 </body>
 </html>
-
