@@ -400,13 +400,14 @@
                                 parentDiv.classList.add('bg-red-100');
                                 parentDiv.classList.remove('bg-green-100');
 
-                                // Crea y muestra el campo de cantidad si no existe
+                                // Crea y muestra el campo de texto si no existe
                                 let cantidadInput = document.getElementById(cantidadInputId);
                                 if (!cantidadInput) {
                                     cantidadInput = document.createElement('input');
-                                    cantidadInput.type = 'number';
+                                    // Cambiado de 'number' a 'text' para permitir texto
+                                    cantidadInput.type = 'text'; 
                                     cantidadInput.id = cantidadInputId;
-                                    cantidadInput.placeholder = 'Cantidad que no se cumplió';
+                                    cantidadInput.placeholder = 'Cantidad o explicación';
                                     cantidadInput.classList.add('w-full', 'p-2', 'mt-2', 'border-2', 'border-gray-300', 'rounded-xl', 'focus:border-red-500', 'focus:ring-red-500');
                                     parentDiv.appendChild(cantidadInput);
                                 }
@@ -415,7 +416,7 @@
                                 parentDiv.classList.add('bg-green-100');
                                 parentDiv.classList.remove('bg-red-100');
 
-                                // Elimina el campo de cantidad si existe
+                                // Elimina el campo de texto si existe
                                 const cantidadInput = document.getElementById(cantidadInputId);
                                 if (cantidadInput) {
                                     parentDiv.removeChild(cantidadInput);
@@ -593,7 +594,8 @@
                 }
                 const radioButtons = document.querySelectorAll('input[type="radio"]');
                 radioButtons.forEach(radio => radio.checked = false);
-                const cantidadInputs = document.querySelectorAll('input[type="number"]');
+                // Cambiado de 'input[type="number"]' a 'input[data-input-type="text"]'
+                const cantidadInputs = document.querySelectorAll('input[data-input-type="text"]');
                 cantidadInputs.forEach(input => input.remove());
                 const divs = document.querySelectorAll('#objetivosContainer > div');
                 divs.forEach(div => div.classList.remove('bg-red-100', 'bg-green-100'));
@@ -646,14 +648,15 @@
                         const objetivoNombre = div.dataset.objetivo;
                         let cantidad = null;
                         if (checkedRadio.value === 'no') {
-                            const cantidadInput = div.querySelector('input[type="number"]');
+                            // Ahora el campo es de tipo texto
+                            const cantidadInput = div.querySelector('input[data-input-type="text"]');
                             if (cantidadInput) {
                                 cantidad = cantidadInput.value;
                             }
                         }
                         objetivosCumplidos[objetivoNombre] = {
                             cumplido: checkedRadio.value === 'si',
-                            cantidad: cantidad
+                            comentario_o_cantidad: cantidad // Nombre de campo cambiado
                         };
                     }
                 });
