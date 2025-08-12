@@ -47,6 +47,25 @@
         .rating-stars svg.empty {
             color: #d1d5db; /* Color gris */
         }
+        /* Estilos para la animación de carga */
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-radius: 50%;
+            border-top: 4px solid #3498db;
+            width: 24px;
+            height: 24px;
+            -webkit-animation: spin 1s linear infinite; /* Safari */
+            animation: spin 1s linear infinite;
+        }
+        /* Animación de giro */
+        @-webkit-keyframes spin {
+            0% { -webkit-transform: rotate(0deg); }
+            100% { -webkit-transform: rotate(360deg); }
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body class="p-4 flex justify-center items-center min-h-screen">
@@ -150,8 +169,10 @@
                 <button id="clearFormBtn" class="w-1/2 px-4 py-2 bg-yellow-500 text-white font-semibold rounded-xl hover:bg-yellow-600 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2">
                     Limpiar Formulario
                 </button>
-                <button id="submitBtn" class="w-1/2 px-4 py-2 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
-                    Confirmar y Guardar
+                
+                <button id="submitBtn" class="w-1/2 px-4 py-2 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 flex items-center justify-center">
+                    <span id="submitBtnText">Confirmar y Guardar</span>
+                    <div id="loadingSpinner" class="loader ml-2" style="display: none;"></div>
                 </button>
             </div>
         </div>
@@ -164,21 +185,20 @@
         import { getFirestore, collection, addDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // Variables globales para Firebase
-       const firebaseConfig = {
-          apiKey: "AIzaSyAUGd71vVqPa7jFvWSdG9HjEn08rZsDjjQ",
-          authDomain: "checklist-3ee5a.firebaseapp.com",
-          projectId: "checklist-3ee5a",
-          storageBucket: "checklist-3ee5a.firebasestorage.app",
-          messagingSenderId: "162582003639",
-          appId: "1:162582003639:web:dc77984f643b6442913232"
+        const firebaseConfig = {
+            apiKey: "AIzaSyAUGd71vVqPa7jFvWSdG9HjEn08rZsDjjQ",
+            authDomain: "checklist-3ee5a.firebaseapp.com",
+            projectId: "checklist-3ee5a",
+            storageBucket: "checklist-3ee5a.firebasestorage.app",
+            messagingSenderId: "162582003639",
+            appId: "1:162582003639:web:dc77984f643b6442913232"
         };
-            
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
         // Inicializa Firebase solo si la configuración está disponible
         let app, db, auth;
-        if (Object.keys(firebaseConfig).length > 0 && firebaseConfig.projectId !== "tu-proyecto-id") {
+        if (Object.keys(firebaseConfig).length > 0) {
             app = initializeApp(firebaseConfig);
             db = getFirestore(app);
             auth = getAuth(app);
@@ -207,6 +227,8 @@
             const turnoSelect = document.getElementById('turnoSelect');
             const evaluadorInput = document.getElementById('evaluadorInput');
             const submitBtn = document.getElementById('submitBtn');
+            const submitBtnText = document.getElementById('submitBtnText');
+            const loadingSpinner = document.getElementById('loadingSpinner');
             const objetivosContainer = document.getElementById('objetivosContainer');
             
             const firmaCanvas = document.getElementById('firmaCanvas');
@@ -390,7 +412,7 @@
                         // Event listener para los cambios en los radio buttons
                         radioGroup.addEventListener('change', (event) => {
                             const parentDiv = event.target.closest('div[data-objetivo]');
-                            const cantidadInputId = `cantidad-${index}`;
+                            const comentarioInputId = `comentario-${index}`;
                             
                             // Si se selecciona "No"
                             if (event.target.value === 'no') {
@@ -399,15 +421,16 @@
                                 parentDiv.classList.remove('bg-green-100');
 
                                 // Crea y muestra el campo de texto si no existe
-                                let cantidadInput = document.getElementById(cantidadInputId);
-                                if (!cantidadInput) {
-                                    cantidadInput = document.createElement('input');
-                                    // Cambiado de 'number' a 'text' para permitir texto
-                                    cantidadInput.type = 'text'; 
-                                    cantidadInput.id = cantidadInputId;
-                                    cantidadInput.placeholder = 'Cantidad o explicación';
-                                    cantidadInput.classList.add('w-full', 'p-2', 'mt-2', 'border-2', 'border-gray-300', 'rounded-xl', 'focus:border-red-500', 'focus:ring-red-500');
-                                    parentDiv.appendChild(cantidadInput);
+                                let comentarioInput = document.getElementById(comentarioInputId);
+                                if (!comentarioInput) {
+                                    comentarioInput = document.createElement('input');
+                                    comentarioInput.type = 'text'; 
+                                    comentarioInput.id = comentarioInputId;
+                                    // Utiliza un atributo para identificar el campo en lugar del type
+                                    comentarioInput.setAttribute('data-input-type', 'text');
+                                    comentarioInput.placeholder = 'Cantidad o explicación';
+                                    comentarioInput.classList.add('w-full', 'p-2', 'mt-2', 'border-2', 'border-gray-300', 'rounded-xl', 'focus:border-red-500', 'focus:ring-red-500');
+                                    parentDiv.appendChild(comentarioInput);
                                 }
                             } else if (event.target.value === 'si') {
                                 // Cambia el color del fondo a verde
@@ -415,9 +438,9 @@
                                 parentDiv.classList.remove('bg-red-100');
 
                                 // Elimina el campo de texto si existe
-                                const cantidadInput = document.getElementById(cantidadInputId);
-                                if (cantidadInput) {
-                                    parentDiv.removeChild(cantidadInput);
+                                const comentarioInput = document.getElementById(comentarioInputId);
+                                if (comentarioInput) {
+                                    parentDiv.removeChild(comentarioInput);
                                 }
                             }
                         });
@@ -592,9 +615,8 @@
                 }
                 const radioButtons = document.querySelectorAll('input[type="radio"]');
                 radioButtons.forEach(radio => radio.checked = false);
-                // Cambiado de 'input[type="number"]' a 'input[data-input-type="text"]'
-                const cantidadInputs = document.querySelectorAll('input[data-input-type="text"]');
-                cantidadInputs.forEach(input => input.remove());
+                const comentarioInputs = document.querySelectorAll('input[data-input-type="text"]');
+                comentarioInputs.forEach(input => input.remove());
                 const divs = document.querySelectorAll('#objetivosContainer > div');
                 divs.forEach(div => div.classList.remove('bg-red-100', 'bg-green-100'));
                 renderChecklist(selectedArea); // Volver a renderizar el checklist para limpiar los estilos
@@ -644,17 +666,16 @@
                         allObjectivesCompleted = false;
                     } else {
                         const objetivoNombre = div.dataset.objetivo;
-                        let cantidad = null;
+                        let comentario = null;
                         if (checkedRadio.value === 'no') {
-                            // Ahora el campo es de tipo texto
-                            const cantidadInput = div.querySelector('input[data-input-type="text"]');
-                            if (cantidadInput) {
-                                cantidad = cantidadInput.value;
+                            const comentarioInput = div.querySelector('input[data-input-type="text"]');
+                            if (comentarioInput) {
+                                comentario = comentarioInput.value;
                             }
                         }
                         objetivosCumplidos[objetivoNombre] = {
                             cumplido: checkedRadio.value === 'si',
-                            comentario_o_cantidad: cantidad // Nombre de campo cambiado
+                            comentario_o_cantidad: comentario
                         };
                     }
                 });
@@ -675,25 +696,29 @@
                     showMessage('Por favor, realiza la firma.');
                     return;
                 }
-
-                // ** Lógica para guardar en Firestore **
-                // Se guarda en una colección pública para que todos los usuarios puedan ver el historial
-                const data = {
-                    fecha: new Date().toISOString(),
-                    turno,
-                    area: selectedArea,
-                    asociado,
-                    calificacion_servicio: selectedRating,
-                    evaluador,
-                    objetivos: objetivosCumplidos,
-                    firma: canvasData,
-                    userId: userId,
-                };
+                
+                // Mostrar la animación de carga y deshabilitar el botón
+                submitBtnText.style.display = 'none';
+                loadingSpinner.style.display = 'block';
+                submitBtn.disabled = true;
 
                 try {
+                    // ** Lógica para guardar en Firestore **
+                    const data = {
+                        fecha: new Date().toISOString(),
+                        turno,
+                        area: selectedArea,
+                        asociado,
+                        calificacion_servicio: selectedRating,
+                        evaluador,
+                        objetivos: objetivosCumplidos,
+                        firma: canvasData,
+                        userId: userId,
+                    };
                     const docRef = await addDoc(collection(db, `/artifacts/${appId}/public/data/surveys`), data);
                     console.log("Documento escrito con ID: ", docRef.id);
                     showMessage('¡Encuesta guardada con éxito!');
+                    
                     // Regresa a la pantalla de inicio y limpia el formulario
                     setTimeout(() => {
                         checklistScreen.style.display = 'none';
@@ -702,13 +727,18 @@
                         resetForm();
                         messageBox.style.display = 'none';
                     }, 2000);
+
                 } catch (e) {
                     console.error("Error al añadir documento: ", e);
                     showMessage("Ocurrió un error al guardar la encuesta.");
+                } finally {
+                    // Ocultar la animación de carga y habilitar el botón
+                    loadingSpinner.style.display = 'none';
+                    submitBtnText.style.display = 'block';
+                    submitBtn.disabled = false;
                 }
             });
         });
     </script>
 </body>
 </html>
-
