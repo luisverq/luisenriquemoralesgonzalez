@@ -182,32 +182,27 @@
         // Importa los módulos de Firebase
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, addDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Variables globales para Firebase
-        const firebaseConfig = {
-            apiKey: "AIzaSyAUGd71vVqPa7jFvWSdG9HjEn08rZsDjjQ",
-            authDomain: "checklist-3ee5a.firebaseapp.com",
-            projectId: "checklist-3ee5a",
-            storageBucket: "checklist-3ee5a.firebasestorage.app",
-            messagingSenderId: "162582003639",
-            appId: "1:162582003639:web:dc77984f643b6442913232"
-        };
+        // Obtiene la configuración de Firebase y otras variables del entorno de Canvas
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
         // Inicializa Firebase solo si la configuración está disponible
         let app, db, auth;
+        let isAuthReady = false;
         if (Object.keys(firebaseConfig).length > 0) {
             app = initializeApp(firebaseConfig);
             db = getFirestore(app);
             auth = getAuth(app);
         } else {
-            console.error('Firebase config no está disponible. Las funcionalidades de base de datos no estarán activas.');
+            console.error('La configuración de Firebase no está disponible. Las funcionalidades de base de datos no estarán activas.');
         }
 
         let userId = null;
-
+        
+        // Espera a que el DOM esté completamente cargado
         document.addEventListener('DOMContentLoaded', () => {
             // ** Elementos de la interfaz de usuario **
             const startScreen = document.getElementById('startScreen');
@@ -219,6 +214,7 @@
             const clearFormBtn = document.getElementById('clearFormBtn');
             const closeMessageBtn = document.getElementById('closeMessageBtn');
             const messageBox = document.getElementById('messageBox');
+            const userIdDisplay = document.getElementById('userIdDisplay');
             
             const asociadoSelect = document.getElementById('asociadoSelect');
             const nuevoAsociadoInput = document.getElementById('nuevoAsociadoInput');
@@ -292,20 +288,24 @@
                 onAuthStateChanged(auth, async (user) => {
                     if (user) {
                         userId = user.uid;
-                        document.getElementById('userIdDisplay').textContent = `Tu ID de usuario: ${userId}`;
+                        userIdDisplay.textContent = `Tu ID de usuario: ${userId}`;
+                        isAuthReady = true;
                     } else {
-                        if (initialAuthToken) {
-                            try {
+                        try {
+                            if (initialAuthToken) {
                                 await signInWithCustomToken(auth, initialAuthToken);
-                            } catch (error) {
-                                console.error("Error al iniciar sesión con token personalizado:", error);
+                            } else {
                                 await signInAnonymously(auth);
                             }
-                        } else {
+                        } catch (error) {
+                            console.error("Error al iniciar sesión con token personalizado:", error);
+                            // Intenta iniciar sesión de forma anónima si el token falla
                             await signInAnonymously(auth);
                         }
                     }
                 });
+            } else {
+                 userIdDisplay.textContent = 'Autenticación no disponible.';
             }
 
             // Función para mostrar un mensaje personalizado
@@ -632,13 +632,13 @@
             
             // Agrega un listener al botón de confirmar
             submitBtn.addEventListener('click', async () => {
-                // Si la configuración no está disponible, muestra un mensaje de error y no intenta guardar.
-                if (!firebaseConfig || !db || !auth || !userId) {
-                    showMessage('Error: La base de datos no está conectada. Los datos no se guardarán.');
-                    console.error('Error al guardar: La configuración de Firebase no está disponible.');
+                // Verifica si la autenticación está lista y la conexión a la base de datos
+                if (!isAuthReady || !db) {
+                    showMessage('Error: La base de datos no está conectada o la autenticación no está lista.');
+                    console.error('Error al guardar: La autenticación no está lista o la configuración de Firebase no está disponible.');
                     return;
                 }
-                
+
                 const turno = turnoSelect.value;
                 const asociado = asociadoSelect.value;
                 const evaluador = evaluadorInput.value;
