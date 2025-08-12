@@ -164,16 +164,14 @@
         import { getFirestore, collection, addDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // Variables globales para Firebase
-        const firebaseConfig = typeof __firebase_config !== 'undefined' && Object.keys(JSON.parse(__firebase_config)).length > 0
-            ? JSON.parse(__firebase_config)
-            : {
-                apiKey: "tu_api_key",
-                authDomain: "tu_proyecto.firebaseapp.com",
-                projectId: "tu-proyecto-id",
-                storageBucket: "tu_proyecto.appspot.com",
-                messagingSenderId: "tu_sender_id",
-                appId: "tu_app_id"
-            };
+       const firebaseConfig = {
+          apiKey: "AIzaSyAUGd71vVqPa7jFvWSdG9HjEn08rZsDjjQ",
+          authDomain: "checklist-3ee5a.firebaseapp.com",
+          projectId: "checklist-3ee5a",
+          storageBucket: "checklist-3ee5a.firebasestorage.app",
+          messagingSenderId: "162582003639",
+          appId: "1:162582003639:web:dc77984f643b6442913232"
+        };
             
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
@@ -713,3 +711,4 @@
     </script>
 </body>
 </html>
+
