@@ -96,7 +96,7 @@
                 </select>
             </div>
             
-            <button id="nextBtn" class="w-full px-4 py-2 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+            <button id="nextBtn" class="w-full px-4 py-2 bg-blue-600 text-white font-semibold rounded-xl transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:bg-blue-300 disabled:cursor-not-allowed">
                 Iniciar Checklist
             </button>
         </div>
@@ -170,7 +170,7 @@
                     Limpiar Formulario
                 </button>
                 
-                <button id="submitBtn" class="w-1/2 px-4 py-2 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 flex items-center justify-center">
+                <button id="submitBtn" class="w-1/2 px-4 py-2 bg-blue-600 text-white font-semibold rounded-xl transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:bg-blue-300 disabled:cursor-not-allowed flex items-center justify-center">
                     <span id="submitBtnText">Confirmar y Guardar</span>
                     <div id="loadingSpinner" class="loader ml-2" style="display: none;"></div>
                 </button>
@@ -285,11 +285,18 @@
             
             // Lógica para la autenticación y la visualización del ID
             if (auth) {
+                // Deshabilita los botones hasta que la autenticación esté lista
+                nextBtn.disabled = true;
+                submitBtn.disabled = true;
+
                 onAuthStateChanged(auth, async (user) => {
                     if (user) {
                         userId = user.uid;
                         userIdDisplay.textContent = `Tu ID de usuario: ${userId}`;
                         isAuthReady = true;
+                        // Habilita los botones una vez que la autenticación esté lista
+                        nextBtn.disabled = false;
+                        submitBtn.disabled = false;
                     } else {
                         try {
                             if (initialAuthToken) {
@@ -298,14 +305,13 @@
                                 await signInAnonymously(auth);
                             }
                         } catch (error) {
-                            console.error("Error al iniciar sesión con token personalizado:", error);
-                            // Intenta iniciar sesión de forma anónima si el token falla
-                            await signInAnonymously(auth);
+                            console.error("Error al iniciar sesión con token personalizado o anónimo:", error);
                         }
                     }
                 });
             } else {
                  userIdDisplay.textContent = 'Autenticación no disponible.';
+                 showMessage('Error de inicialización: La configuración de Firebase no se pudo cargar.');
             }
 
             // Función para mostrar un mensaje personalizado
@@ -428,7 +434,7 @@
                                     comentarioInput.id = comentarioInputId;
                                     // Utiliza un atributo para identificar el campo en lugar del type
                                     comentarioInput.setAttribute('data-input-type', 'text');
-                                    comentarioInput.placeholder = '...';
+                                    comentarioInput.placeholder = 'Cantidad o explicación';
                                     comentarioInput.classList.add('w-full', 'p-2', 'mt-2', 'border-2', 'border-gray-300', 'rounded-xl', 'focus:border-red-500', 'focus:ring-red-500');
                                     parentDiv.appendChild(comentarioInput);
                                 }
@@ -742,4 +748,3 @@
     </script>
 </body>
 </html>
-
